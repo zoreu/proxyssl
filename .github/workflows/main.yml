@@ -26,40 +26,41 @@ on:
 jobs:
   update-proxy:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Clonar o repositório na branch updater
+      # Checkout da branch updater
       - name: Checkout updater branch
         uses: actions/checkout@v3
         with:
-          repository: zoreu/proxyssl
           ref: updater
           token: ${{ secrets.REPO_TOKEN }}
 
-      # 2. Configurar Python 3.11
+      # Setup Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      # 3. Instalar dependências
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      # 4. Rodar o script update_proxy.py
+        run: pip install -r requirements.txt
+
       - name: Run updater script
         run: python update_proxy.py
 
-      # 5. Configurar Git
-      - name: Configure Git
+      # Agora troca para a branch main
+      - name: Checkout main branch
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          token: ${{ secrets.REPO_TOKEN }}
+
+      # Copia o arquivo gerado da workspace anterior
+      - name: Copy proxy file
+        run: cp ../proxyssl/proxy_http_ssl.txt proxy_http_ssl.txt || true
+
+      - name: Commit and push
         run: |
-          git config --local user.email "${{ secrets.GIT_EMAIL }}"
-          git config --local user.name "${{ secrets.GIT_NAME }}"
-      # 6. Copiar arquivo atualizado para a branch main
-      - name: Push proxy file to main branch
-        run: |
-          git remote set-url origin https://x-access-token:${{ secrets.REPO_TOKEN }}@github.com/zoreu/proxyssl.git
+          git config user.name "${{ secrets.GIT_NAME }}"
+          git config user.email "${{ secrets.GIT_EMAIL }}"
           git add proxy_http_ssl.txt
-          git commit -m "Update proxy_http_ssl.txt from updater branch" || echo "No changes to commit"
-          git push origin updater:main --force
+          git commit -m "Update proxy_http_ssl.txt" || echo "No changes"
+          git push origin main
