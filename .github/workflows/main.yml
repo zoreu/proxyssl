@@ -26,41 +26,51 @@ on:
 jobs:
   update-proxy:
     runs-on: ubuntu-latest
+
     steps:
-      # Checkout da branch updater
+      # 1. Checkout updater
       - name: Checkout updater branch
         uses: actions/checkout@v3
         with:
           ref: updater
           token: ${{ secrets.REPO_TOKEN }}
 
-      # Setup Python
+      # 2. Setup Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
+      # 3. Instalar dependências
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
+      # 4. Rodar script
       - name: Run updater script
         run: python update_proxy.py
 
-      # Agora troca para a branch main
+      # 5. Guardar arquivo gerado em /tmp
+      - name: Save proxy file
+        run: cp proxy_http_ssl.txt /tmp/proxy_http_ssl.txt
+
+      # 6. Checkout da branch main
       - name: Checkout main branch
         uses: actions/checkout@v3
         with:
           ref: main
           token: ${{ secrets.REPO_TOKEN }}
 
-      # Copia o arquivo gerado da workspace anterior
-      - name: Copy proxy file
-        run: cp ../proxyssl/proxy_http_ssl.txt proxy_http_ssl.txt || true
+      # 7. Copiar arquivo de volta (sempre substitui)
+      - name: Restore proxy file
+        run: cp /tmp/proxy_http_ssl.txt proxy_http_ssl.txt
 
-      - name: Commit and push
+      # 8. Commit e push
+      - name: Commit and push changes
         run: |
           git config user.name "${{ secrets.GIT_NAME }}"
           git config user.email "${{ secrets.GIT_EMAIL }}"
           git add proxy_http_ssl.txt
-          git commit -m "Update proxy_http_ssl.txt" || echo "No changes"
+          git commit -m "Update proxy_http_ssl.txt" || echo "No changes to commit"
           git push origin main
